@@ -9,10 +9,10 @@
 #ifndef audioBank_h
 #define audioBank_h
 #include <array>
-#define GAIN 0.5
-#define VOL 1.5
-#define LENGTH 441000//1000000// //dependent on sample size
-#define DURATION 0.25
+#define GAIN 0.25
+#define VOL 3
+#define LENGTH 441000
+#define DURATION 0.2
 #define MAXSECONDS 30
 #define VOLUMESTORAGE 400
 #define BANKSIZE 3
@@ -20,27 +20,26 @@
 
 class audioBank{
 public:
-    int size, rate, recPos, r1, r2;
+    int size, rate, x, y, r;
+    int recPos, r1, r2;
     int playPos, p1, p2;
-    int x, y, r, numClick, seconds;
+    int numClick, seconds;
     
     bool rstat, stat;
-    float tempL, tempR, pan;
-    float buffer[LENGTH], b1[LENGTH], b2[LENGTH];
-
+    float tempL, tempR;
+    float s1[LENGTH], s2[LENGTH], s3[LENGTH];
+    float b1Length, b2Length, b3Length;
+    float offset, buff1, buff2, buff3;
     
     ofSoundStream inputS;
     ofSoundStream outputS;
     
-    vector <float> volHist;
-    vector <float> inputL, out1L, out2L;
-    vector <float> inputR, out1R, out2R;
+    vector <float> volHist, inputL, inputR;
     
     float smoothedVol = 0.0;
     float scaledVol = 0.0;
     int N = LENGTH * DURATION;
     int sec = ofGetSeconds();
-    float b1Length, b2Length, b3Length;
     
     //-----------------------------------------------------------------------------------------
     audioBank(){};
@@ -63,16 +62,12 @@ public:
         
         inputS.stop();
         outputS.stop();
-        
-        pan = 0;
+
         //numClick = 0;
         seconds = 0;
         
     }
       //-----------------------------------------------------------------------------------------
-    void setPan(float value){
-        pan = value;
-    }
     //For multi recording track
     void trackTrig(){
         if(numClick == 3){
@@ -85,6 +80,18 @@ public:
     }
     //Trigger methods for recording
     void startRecording(){
+        if(numClick == 1){
+            recPos = 0;
+        }
+        else if(numClick == 2){
+            r1 = 0;
+        }
+        else if (numClick == 3){
+            r2 = 0;
+        }
+        else{
+            //do nothing T.T
+        }
         rstat = true;
         inputS.start();
         cout << " ON";
@@ -97,9 +104,22 @@ public:
     //Playback/output stream to start
     void startAudio(){
         outputS.start();
+        if(numClick == 1){
+            playPos = 0;
+        }
+        else if(numClick == 2){
+            p1 = 0;
+        }
+        else {
+            p2 = 0;
+        }
     }
     void stopAudio(){
         outputS.stop();
+    }
+    int getLength(float length){
+        offset = length;
+        return offset;
     }
      //-----------------------------------------------------------------------------------------
     /**
@@ -148,16 +168,15 @@ public:
         if(rstat){
             //Store left and right input sounds into left&right input array
             for(int i = 0; i < bufferSize; i++){
-                //Verison 2 Recording audio using sample positon
-                if(recPos < LENGTH){
-                    buffer[recPos] = input[i * 2];
-                    buffer[recPos] = input[i * 2 + 1];
+                //Write inputs into positions
+                if(recPos < LENGTH -1){
+                    s1[recPos] += input[i * 2];     //writes out input from left channel
+                    s1[recPos] += input[i * 2 + 1]; //writes out input from right channel
                     recPos++;
                 }
                 else{
-                    stopRecording();
-                    startAudio();
                     rstat = false;
+                    startAudio();
                 }
             }
             b1Length = recPos;
@@ -165,30 +184,28 @@ public:
     }
     void audioIn2(float * input, int bufferSize, int nChannels){
         for(int i = 0; i < bufferSize; i++){
-            if(r1 < LENGTH){
-                b1[r1] = input[i * 2];
-                b1[r1] = input[i * 2 +1];
+            if(r1 < LENGTH - 1){
+                s2[r1] += input[i * 2];
+                s2[r1] += input[i * 2 +1];
                 r1++;
             }
             else{
-                stopRecording();
-                startAudio();
                 rstat = false;
+                startAudio();
             }
         }
         b2Length = r1;
     }
     void audioIn3(float * input, int bufferSize, int nChannels){
         for(int i = 0; i < bufferSize; i++){
-            if(r2 < LENGTH){
-                b2[r2] = input[i * 2];
-                b2[r2] = input[i * 2 +1];
+            if(r2 < LENGTH -1){
+                s3[r2] += input[i * 2];
+                s3[r2] += input[i * 2 +1];
                 r2++;
             }
             else{
-                stopRecording();
-                startAudio();
                 rstat = false;
+                startAudio();
             }
         }
         b3Length = r2;
@@ -220,80 +237,63 @@ public:
     }
      //-----------------------------------------------------------------------------------------
     /*
-     * Default playback of sound when audio is stopped
+     * Playback of sounds, one at a time when audio is stopped
      */
-    void audioOut1(float * output, int bufferSize, int nChannels){
+    void audioOut(float * output, int bufferSize, int nChannels){
         if(!rstat){
             //Recalling the entire buffer of the stream
             for(int i = 0; i < bufferSize; i++){
-                //Version2 with specifc position of the array
-                if(playPos < LENGTH){
-                    output[i * nChannels] = buffer[playPos] * GAIN; //* -1; //simulate echo effect
-                    output[i * nChannels + 1] = buffer[playPos] * GAIN;
+                if(playPos < b1Length){
+                    output[i * nChannels] += s1[playPos] * GAIN;
+                    output[i * nChannels + 1] += s1[playPos] * GAIN;
                     playPos++;
                 }
-            }//end of loop
-        }
-    }
-    void audioOut2(float * output, int bufferSize, int nChannels){
-        if(!rstat){
-            //Recalling the entire buffer of the stream
-            for(int i = 0; i < bufferSize; i++){
+                playPos %= N; //loops <-- allows all 3 recording to overlap and play simultanously
                 if(p1 < b2Length){
                     //Altered audio
-                    output[i * nChannels] =  b1[p1] * GAIN; //* -1; //simulate echo effect
-                    output[i * nChannels + 1] = b1[p1] * GAIN;
+                    output[i * nChannels] += s2[p1] * VOL;
+                    output[i * nChannels + 1] += s2[p1] * VOL;
                     p1++;
                 }
-            }//end of loop
-        }
-    }
-    void audioOut3(float * output, int bufferSize, int nChannels){
-        if(!rstat){
-            //Recalling the entire buffer of the stream
-            for(int i = 0; i < bufferSize; i++){
+                p1 %= N;  //loops
                 if(p2 < b3Length){
                     //Altered audio
-                    output[i * nChannels] =  b2[p2] * GAIN; //* -1; //simulate echo effect
-                    output[i * nChannels + 1] = b2[p2] * GAIN;
+                    output[i * nChannels] +=  s3[p2] * GAIN;
+                    output[i * nChannels + 1] += s3[p2] * GAIN;
                     p2++;
                 }
-            }//end of loop
+                p2 %= N;  //loops
+            }
         }
     }
     //-----------------------------------------------------------------------------------------
     /*
-     * adds ontop on audio // Memory leaks
+     * adds ontop on audio // Memory leaks<-- might not use
      */
     void echoEffect(float * output, int bufferSize, int nChannels){
-        //if(!rstat){
+        if(!rstat){
+            float audio1 = getLength(b1Length);
+            float audio2 = getLength(b2Length);
+            float audio3 = getLength(b3Length);
+            //play same audio at offset sample position
             for(int i = 0; i < bufferSize*nChannels; i++){
-                if(playPos < b1Length){
-                    //Altered audio
-                    output[i * nChannels] =  buffer[playPos] * 0.2 * VOL; //* -1; //simulate echo effect
-                    output[i * nChannels + 1] = buffer[playPos] * 0.2;
-                    playPos++;
+                //silence delayed until copies plays
+                output[i * nChannels] = 0;
+                output[i * nChannels +1] = 0;
+                int e1 = 0;
+                int e2 = 0;
+                int e3 = 0;
+                if(playPos == b1Length/10){
+                    if(e1 < b1Length){
+                        //Altered audio
+                        output[i * nChannels] =  s1[e1] * 0.2 * VOL; //* -1; //simulate echo effect
+                        output[i * nChannels + 1] = s1[e1] * 0.2 * VOL;
+                        e1++;
+                    }
                 }
-                //Will loop the sound, prevent clicking
-                playPos %= N;
-                if(p1 < b2Length){
-                    //Altered audio
-                    output[i * nChannels] =  b1[p1] * 0.2 * VOL; //* -1; //simulate echo effect
-                    output[i * nChannels + 1] = b1[p1] * 0.2;
-                    p1++;
-                }
-                //Will loop the sound, prevent clicking
-                p1 %= N;
-                if(p2 < b3Length){
-                    //Altered audio
-                    output[i * nChannels] =  b2[p2] * 0.2 * VOL; //* -1; //simulate echo effect
-                    output[i * nChannels + 1] = b2[p2] * 0.2;
-                    p2++;
-                }
-                //Will loop the sound, prevent clicking
-                p2 %= N;
+
             }//end of loop
         }
-    //}
+    }
 };
 #endif /* audioBank_h */

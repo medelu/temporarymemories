@@ -21,8 +21,6 @@ void ofApp::setup(){
     verdana14.setLineHeight(FS + 2);
     verdana14.setLetterSpacing(1);
     
-    sound.setPan(10.5);
-    
     numClick = 0;
     status = false;
 }
@@ -59,7 +57,6 @@ void ofApp::keyPressed(int key){
             //visual.ON();
             status = true;
             sound.startRecording();
-            //sound.trackTrig();
             sound.stopAudio();
             numClick++;
             break;
@@ -124,16 +121,16 @@ void ofApp::dragEvent(ofDragInfo dragInfo){
 //--------------------------------------------------------------
 void ofApp::audioIn(float * input, int bufferSize, int nChannels){
     if(numClick == 1){
-    sound.audioIn1(input, bufferSize, nChannels);
+        sound.audioIn1(input, bufferSize, nChannels);
     }
     else if(numClick == 2){
-    sound.audioIn2(input, bufferSize, nChannels);
+        sound.audioIn2(input, bufferSize, nChannels);
     }
     else if(numClick == 3){
-    sound.audioIn3(input, bufferSize, nChannels);
+        sound.audioIn3(input, bufferSize, nChannels);
     }
     else{
-        sound.trackTrig();
+        //do nothing T.T
     }
     sound.volGrab(input, bufferSize, nChannels);
 }
@@ -141,9 +138,7 @@ void ofApp::audioIn(float * input, int bufferSize, int nChannels){
 //--------------------------------------------------------------
 void ofApp::audioOut(float *output, int bufferSize, int nChannels){
     //Default
-    sound.audioOut1(output, bufferSize, nChannels);
-    sound.audioOut2(output, bufferSize, nChannels);
-    sound.audioOut3(output, bufferSize, nChannels);
+    sound.audioOut(output, bufferSize, nChannels);
     //Audio effects
     //sound.echoEffect(output, bufferSize, nChannels);
 }
