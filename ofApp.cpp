@@ -5,7 +5,7 @@
 #define FRAMERATE 46
 #define RAD 15
 #define DPI 72
-#define FS 14
+#define FS 24
 
 
 //--------------------------------------------------------------
@@ -28,7 +28,7 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 void ofApp::update(){
     sound.update();
-    if(numClick > 4){
+    if(numClick > 3){
         numClick = 0;
     }
 }
@@ -39,30 +39,34 @@ void ofApp::draw(){
     sound.draw();
 
     //Text or prompt
-    ofSetColor(ofColor::white);
-    verdana14.drawString("We yearn to say things we wish", ofGetWidth()/3, ofGetHeight()/5);
-    verdana14.drawString("at a certain moment in our lives.", ofGetWidth()/3, ofGetHeight()/5 + 15);
-    verdana14.drawString("Relieve yourself from your unsaid words.", ofGetWidth()/3*2, ofGetHeight()/5*4);
-    verdana14.drawString("Share your moments with us.", ofGetWidth()/3*2, ofGetHeight()/5*4 +15);
-    
+    ofSetColor(ofColor::aliceBlue);
+    verdana14.drawString("We yearn to say things we wish,", ofGetWidth()/8, ofGetHeight()/5);
+    verdana14.drawString("At a certain moment in our lives.", ofGetWidth()/8, ofGetHeight()/5 + 25);
+    verdana14.drawString("Relieve yourself from your unsaid words.", ofGetWidth()/8, ofGetHeight()/5 + 50);
+    verdana14.drawString("Share your moments with us.", ofGetWidth()/8, ofGetHeight()/5 + 75);
+
     //Directions
-    verdana14.drawString("Spacebar - start", ofGetWidth()/5 * 2 - 20, ofGetHeight() - 20);
-    verdana14.drawString("S - stop", ofGetWidth()/5 * 2 + 150, ofGetHeight() - 20);
+    //verdana14.drawString("Spacebar(twice) - start", ofGetWidth()/5 * 2 - 20, ofGetHeight() - 20);
+    //verdana14.drawString("S - stop", ofGetWidth()/5 * 2 + 150, ofGetHeight() - 20);
 }
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
     switch(key){
         case ' ':
-            //visual.ON();
-            status = true;
-            sound.startRecording();
-            sound.stopAudio();
-            numClick++;
+            if(status){
+                sound.startRecording();
+                sound.stopAudio();
+                numClick++;
+                status = false;
+            }
+            else{
+                sound.stopRecording();
+                sound.startAudio();
+                status = true;
+            }
             break;
         case 's':
-            //visual.OFF();
-            status = false;
             sound.stopRecording();
             sound.startAudio();
             break;
@@ -120,26 +124,20 @@ void ofApp::dragEvent(ofDragInfo dragInfo){
 }
 //--------------------------------------------------------------
 void ofApp::audioIn(float * input, int bufferSize, int nChannels){
+    sound.volGrab(input, bufferSize, nChannels);
     if(numClick == 1){
         sound.audioIn1(input, bufferSize, nChannels);
     }
-    else if(numClick == 2){
+    if(numClick == 2){
         sound.audioIn2(input, bufferSize, nChannels);
     }
-    else if(numClick == 3){
+    if(numClick == 3){
         sound.audioIn3(input, bufferSize, nChannels);
     }
-    else{
-        //do nothing T.T
-    }
-    sound.volGrab(input, bufferSize, nChannels);
 }
 
 //--------------------------------------------------------------
 void ofApp::audioOut(float *output, int bufferSize, int nChannels){
-    //Default
     sound.audioOut(output, bufferSize, nChannels);
-    //Audio effects
-    //sound.echoEffect(output, bufferSize, nChannels);
 }
 
